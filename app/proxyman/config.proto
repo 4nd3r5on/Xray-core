@@ -89,8 +89,6 @@ message InboundHandlerConfig {
   xray.common.serial.TypedMessage receiver_settings = 2;
   // Settings for inbound proxy. Must be one of the inbound proxies.
   xray.common.serial.TypedMessage proxy_settings = 3;
-  // Manager for callbacks, used for statistics mostly.
-  google.protobuf.Any callback_manager = 4;
 }
 
 // OutboundHandlerConfig is the configuration for outbound handler.
