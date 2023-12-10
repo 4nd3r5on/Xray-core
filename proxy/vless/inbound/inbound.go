@@ -56,8 +56,9 @@ type Handler struct {
 	PolicyManager         policy.Manager
 	Validator             *vless.Validator
 	CallbackManager       *xray_vless_callbacks.CallbackManager
-	dns                   dns.Client
-	fallbacks             map[string]map[string]map[string]*Fallback // or nil
+
+	dns       dns.Client
+	fallbacks map[string]map[string]map[string]*Fallback // or nil
 	// regexps            map[string]*regexp.Regexp       // or nil
 }
 

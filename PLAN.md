@@ -19,4 +19,8 @@ Will start to work on it when callbacks are fully implemented and tested
 ### Remove protobuf configuration and just use structures for configurations
 **Status**: waiting for responses in [discussion XRay]() and [discussion V2Ray]()
 
+<<<<<<< HEAD
 All in all I don't see any reason to use protobuf for configuration. IMO it overcomplicate things and overall don't make much good impact.
+=======
+All in all I don't see any reason to use protobuf for configuration. IMO it overcomplicate things and overall don't make much good impact.
+>>>>>>> 0f16df1 (Minor changes)

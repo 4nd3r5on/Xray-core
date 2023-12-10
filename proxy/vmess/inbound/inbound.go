@@ -102,8 +102,12 @@ type Handler struct {
 	PolicyManager         policy.Manager
 	InboundHandlerManager feature_inbound.Manager
 	Clients               *vmess.TimedUserValidator
+<<<<<<< HEAD
 	UsersByEmail          *userByEmail
 	CallbackManager       *xray_vmess_inbound_callbacks.CallbackManager
+=======
+	usersByEmail          *userByEmail
+>>>>>>> 0f16df1 (Minor changes)
 	detours               *DetourConfig
 	SessionHistory        *encoding.SessionHistory
 }
@@ -116,8 +120,12 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		InboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		Clients:               vmess.NewTimedUserValidator(),
 		detours:               config.Detour,
+<<<<<<< HEAD
 		UsersByEmail:          newUserByEmail(config.GetDefaultValue()),
 		CallbackManager:       xray_vmess_inbound_callbacks.NewCallbackManager(),
+=======
+		usersByEmail:          newUserByEmail(config.GetDefaultValue()),
+>>>>>>> 0f16df1 (Minor changes)
 		SessionHistory:        encoding.NewSessionHistory(),
 	}
 
@@ -139,7 +147,11 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 func (h *Handler) Close() error {
 	return errors.Combine(
 		h.SessionHistory.Close(),
+<<<<<<< HEAD
 		common.Close(h.UsersByEmail))
+=======
+		common.Close(h.usersByEmail))
+>>>>>>> 0f16df1 (Minor changes)
 }
 
 // Network implements proxy.Inbound.Network().
