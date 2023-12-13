@@ -25,6 +25,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/features/routing"
 	"github.com/4nd3r5on/Xray-core/proxy/vmess"
 	"github.com/4nd3r5on/Xray-core/proxy/vmess/encoding"
+	xray_vmess_inbound_callbacks "github.com/4nd3r5on/Xray-core/proxy/vmess/inbound/callbacks"
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 )
 
@@ -101,6 +102,7 @@ type Handler struct {
 	InboundHandlerManager feature_inbound.Manager
 	Clients               *vmess.TimedUserValidator
 	UsersByEmail          *userByEmail
+	CallbackManager       *xray_vmess_inbound_callbacks.CallbackManager
 	detours               *DetourConfig
 	SessionHistory        *encoding.SessionHistory
 }
@@ -114,6 +116,7 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		Clients:               vmess.NewTimedUserValidator(),
 		detours:               config.Detour,
 		UsersByEmail:          newUserByEmail(config.GetDefaultValue()),
+		CallbackManager:       xray_vmess_inbound_callbacks.NewCallbackManager(),
 		SessionHistory:        encoding.NewSessionHistory(),
 	}
 
@@ -245,6 +248,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 			err = newError("invalid request from ", connection.RemoteAddr()).Base(err).AtInfo()
 		}
 		return err
+	}
+
+	if callbackID, err := h.CallbackManager.ExecOnProcess(request); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
 	}
 
 	if request.Command != protocol.RequestCommandMux {

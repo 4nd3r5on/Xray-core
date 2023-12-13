@@ -1,14 +1,14 @@
-package xray_vless_callbacks
+package xray_vmess_inbound_callbacks
 
 import (
 	"github.com/4nd3r5on/Xray-core/common/idsyncmap"
+	"github.com/4nd3r5on/Xray-core/common/protocol"
 	"github.com/4nd3r5on/Xray-core/features/policy"
-	"github.com/4nd3r5on/Xray-core/proxy/vless"
 )
 
 type (
 	OnProcess struct {
-		Exec func(account *vless.MemoryAccount) error
+		Exec func(request *protocol.RequestHeader) error
 	}
 	OnProcessStart struct {
 		Exec func(sessionPolicy *policy.Session) error
@@ -17,12 +17,12 @@ type (
 
 type CallbackManager struct {
 	CbsOnProcess      idsyncmap.IDSyncMap[OnProcess]
-	CbsOnProcessStart idsyncmap.IDSyncMap[OnProcess]
+	CbsOnProcessStart idsyncmap.IDSyncMap[OnProcessStart]
 }
 
-func (cm *CallbackManager) ExecOnProcess(account *vless.MemoryAccount) (id int32, err error) {
+func (cm *CallbackManager) ExecOnProcess(request *protocol.RequestHeader) (id int32, err error) {
 	for id, callback := range cm.CbsOnProcess.Get() {
-		err = callback.Exec(account)
+		err = callback.Exec(request)
 		if err != nil {
 			return id, err
 		}
@@ -30,9 +30,9 @@ func (cm *CallbackManager) ExecOnProcess(account *vless.MemoryAccount) (id int32
 	return id, nil
 }
 
-func (cm *CallbackManager) ExecOnProcessStart(account *vless.MemoryAccount) (id int32, err error) {
+func (cm *CallbackManager) ExecOnProcessStart(sessionPolicy *policy.Session) (id int32, err error) {
 	for id, callback := range cm.CbsOnProcessStart.Get() {
-		err = callback.Exec(account)
+		err = callback.Exec(sessionPolicy)
 		if err != nil {
 			return id, err
 		}
