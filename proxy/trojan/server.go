@@ -35,10 +35,11 @@ func init() {
 
 // Server is an inbound connection handler that handles messages in trojan protocol.
 type Server struct {
-	PolicyManager policy.Manager
-	Validator     *Validator
-	fallbacks     map[string]map[string]map[string]*Fallback // or nil
-	cone          bool
+	PolicyManager   policy.Manager
+	Validator       *Validator
+	CallbackManager *CallbackManager
+	fallbacks       map[string]map[string]map[string]*Fallback // or nil
+	cone            bool
 }
 
 // NewServer creates a new trojan inbound handler.
@@ -57,9 +58,10 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 
 	v := core.MustFromContext(ctx)
 	server := &Server{
-		PolicyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		Validator:     validator,
-		cone:          ctx.Value("cone").(bool),
+		PolicyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		Validator:       validator,
+		CallbackManager: NewCallbackManager(),
+		cone:            ctx.Value("cone").(bool),
 	}
 
 	if config.Fallbacks != nil {
@@ -218,6 +220,10 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound.SetCanSpliceCopy(3)
 	inbound.User = user
 	sessionPolicy = s.PolicyManager.ForLevel(user.Level)
+
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound, sessionPolicy); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
+	}
 
 	if destination.Network == net.Network_UDP { // handle udp request
 		return s.handleUDPPayload(ctx, &PacketReader{Reader: clientReader}, &PacketWriter{Writer: conn}, dispatcher)

@@ -21,10 +21,11 @@ import (
 )
 
 type Server struct {
-	Config        *ServerConfig
-	Validator     *Validator
-	PolicyManager policy.Manager
-	cone          bool
+	Config          *ServerConfig
+	Validator       *Validator
+	PolicyManager   policy.Manager
+	CallbackManager *CallbackManager
+	cone            bool
 }
 
 // NewServer create a new Shadowsocks server.
@@ -43,10 +44,11 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 
 	v := core.MustFromContext(ctx)
 	s := &Server{
-		Config:        config,
-		Validator:     validator,
-		PolicyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		cone:          ctx.Value("cone").(bool),
+		Config:          config,
+		Validator:       validator,
+		PolicyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		CallbackManager: NewCallbackManager(),
+		cone:            ctx.Value("cone").(bool),
 	}
 
 	return s, nil
@@ -74,6 +76,10 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound := session.InboundFromContext(ctx)
 	inbound.Name = "shadowsocks"
 	inbound.SetCanSpliceCopy(3)
+
+	if cbID, err := s.CallbackManager.ExecOnProcess(); err != nil {
+		return newError("callback failed. Callback ID: ", cbID).Base(err).AtWarning()
+	}
 
 	switch network {
 	case net.Network_TCP:
@@ -218,6 +224,10 @@ func (s *Server) handleConnection(ctx context.Context, conn stat.Connection, dis
 	sessionPolicy = s.PolicyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
+
+	if cbID, err := s.CallbackManager.ExecOnHandleConn(inbound, sessionPolicy); err != nil {
+		return newError("callback failed. Callback ID: ", cbID).Base(err).AtWarning()
+	}
 
 	ctx = policy.ContextWithBufferPolicy(ctx, sessionPolicy.Buffer)
 	link, err := dispatcher.Dispatch(ctx, dest)
