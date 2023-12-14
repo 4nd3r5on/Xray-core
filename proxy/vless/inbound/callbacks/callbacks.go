@@ -17,7 +17,7 @@ type (
 
 type CallbackManager struct {
 	CbsOnProcess      idsyncmap.IDSyncMap[OnProcess]
-	CbsOnProcessStart idsyncmap.IDSyncMap[OnProcess]
+	CbsOnProcessStart idsyncmap.IDSyncMap[OnProcessStart]
 }
 
 func (cm *CallbackManager) ExecOnProcess(account *vless.MemoryAccount) (id int32, err error) {
@@ -30,9 +30,9 @@ func (cm *CallbackManager) ExecOnProcess(account *vless.MemoryAccount) (id int32
 	return id, nil
 }
 
-func (cm *CallbackManager) ExecOnProcessStart(account *vless.MemoryAccount) (id int32, err error) {
+func (cm *CallbackManager) ExecOnProcessStart(sessionPolicy *policy.Session) (id int32, err error) {
 	for id, callback := range cm.CbsOnProcessStart.Get() {
-		err = callback.Exec(account)
+		err = callback.Exec(sessionPolicy)
 		if err != nil {
 			return id, err
 		}
