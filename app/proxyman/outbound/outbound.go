@@ -21,14 +21,14 @@ type Manager struct {
 	taggedHandler    map[string]outbound.Handler
 	untaggedHandlers []outbound.Handler
 	running          bool
-	tagsCache        map[string][]string
+	tagsCache        *sync.Map
 }
 
 // New creates a new Manager.
 func New(ctx context.Context, config *proxyman.OutboundConfig) (*Manager, error) {
 	m := &Manager{
 		taggedHandler: make(map[string]outbound.Handler),
-		tagsCache:     make(map[string][]string),
+		tagsCache:     &sync.Map{},
 	}
 	return m, nil
 }
@@ -105,7 +105,7 @@ func (m *Manager) AddHandler(ctx context.Context, handler outbound.Handler) erro
 	m.access.Lock()
 	defer m.access.Unlock()
 
-	m.tagsCache = make(map[string][]string)
+	m.tagsCache = &sync.Map{}
 
 	if m.defaultHandler == nil {
 		m.defaultHandler = handler
@@ -136,7 +136,7 @@ func (m *Manager) RemoveHandler(ctx context.Context, tag string) error {
 	m.access.Lock()
 	defer m.access.Unlock()
 
-	m.tagsCache = make(map[string][]string)
+	m.tagsCache = &sync.Map{}
 
 	delete(m.taggedHandler, tag)
 	if m.defaultHandler != nil && m.defaultHandler.Tag() == tag {
@@ -148,13 +148,14 @@ func (m *Manager) RemoveHandler(ctx context.Context, tag string) error {
 
 // Select implements outbound.HandlerSelector.
 func (m *Manager) Select(selectors []string) []string {
-	m.access.RLock()
-	defer m.access.RUnlock()
 
 	key := strings.Join(selectors, ",")
-	if cache, ok := m.tagsCache[key]; ok {
-		return cache
+	if cache, ok := m.tagsCache.Load(key); ok {
+		return cache.([]string)
 	}
+
+	m.access.RLock()
+	defer m.access.RUnlock()
 
 	tags := make([]string, 0, len(selectors))
 
@@ -168,7 +169,7 @@ func (m *Manager) Select(selectors []string) []string {
 	}
 
 	sort.Strings(tags)
-	m.tagsCache[key] = tags
+	m.tagsCache.Store(key, tags)
 
 	return tags
 }
