@@ -403,6 +403,7 @@ type Config struct {
 	// and should not be used.
 	OutboundDetours []OutboundDetourConfig `json:"outboundDetour"`
 
+<<<<<<< HEAD
 	LogConfig        *LogConfig              `json:"log"`
 	RouterConfig     *RouterConfig           `json:"routing"`
 	DNSConfig        *DNSConfig              `json:"dns"`
@@ -416,6 +417,21 @@ type Config struct {
 	Reverse          *ReverseConfig          `json:"reverse"`
 	FakeDNS          *FakeDNSConfig          `json:"fakeDns"`
 	Observatory      *ObservatoryConfig      `json:"observatory"`
+=======
+	LogConfig       *LogConfig             `json:"log"`
+	RouterConfig    *RouterConfig          `json:"routing"`
+	DNSConfig       *DNSConfig             `json:"dns"`
+	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
+	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
+	Transport       *TransportConfig       `json:"transport"`
+	Policy          *PolicyConfig          `json:"policy"`
+	API             *APIConfig             `json:"api"`
+	Metrics         *MetricsConfig         `json:"metrics"`
+	Stats           *StatsConfig           `json:"stats"`
+	Reverse         *ReverseConfig         `json:"reverse"`
+	FakeDNS         *FakeDNSConfig         `json:"fakeDns"`
+	Observatory     *ObservatoryConfig     `json:"observatory"`
+>>>>>>> fa5d7a2 (Least load balancer (#2999))
 	BurstObservatory *BurstObservatoryConfig `json:"burstObservatory"`
 }
 

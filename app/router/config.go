@@ -155,6 +155,7 @@ func (br *BalancingRule) Build(ohm outbound.Manager, dispatcher routing.Dispatch
 			fallbackTag: br.FallbackTag,
 			strategy:    leastLoadStrategy,
 		}, nil
+<<<<<<< HEAD
 	case "random":
 		fallthrough
 	case "":
@@ -164,6 +165,31 @@ func (br *BalancingRule) Build(ohm outbound.Manager, dispatcher routing.Dispatch
 			fallbackTag: br.FallbackTag,
 			strategy:    &RandomStrategy{},
 		}, nil
+=======
+	case "leastload":
+		i, err := br.StrategySettings.GetInstance()
+		if err != nil {
+			return nil, err
+		}
+		s, ok := i.(*StrategyLeastLoadConfig)
+		if !ok {
+			return nil, newError("not a StrategyLeastLoadConfig").AtError()
+		}
+		leastLoadStrategy := NewLeastLoadStrategy(s)
+		return &Balancer{
+			selectors: br.OutboundSelector,
+			ohm:       ohm, fallbackTag: br.FallbackTag,
+			strategy: leastLoadStrategy,
+		}, nil
+	case "random":
+		fallthrough
+	case "":
+		return &Balancer{
+			selectors: br.OutboundSelector,
+			ohm:       ohm, fallbackTag: br.FallbackTag,
+			strategy: &RandomStrategy{},
+		}, nil
+>>>>>>> fa5d7a2 (Least load balancer (#2999))
 	default:
 		return nil, newError("unrecognized balancer type")
 	}

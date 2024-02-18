@@ -54,6 +54,7 @@ func (s *routingServer) OverrideBalancerTarget(ctx context.Context, request *Ove
 	return nil, newError("unsupported router implementation")
 }
 
+<<<<<<< HEAD
 func (s *routingServer) AddRule(ctx context.Context, request *AddRuleRequest) (*AddRuleResponse, error) {
 	if bo, ok := s.router.(routing.Router); ok {
 		return &AddRuleResponse{}, bo.AddRule(request.Config, request.ShouldAppend)
@@ -68,6 +69,8 @@ func (s *routingServer) RemoveRule(ctx context.Context, request *RemoveRuleReque
 	return nil, newError("unsupported router implementation")
 }
 
+=======
+>>>>>>> fa5d7a2 (Least load balancer (#2999))
 // NewRoutingServer creates a statistics service with statistics manager.
 func NewRoutingServer(router routing.Router, routingStats stats.Channel) RoutingServiceServer {
 	return &routingServer{

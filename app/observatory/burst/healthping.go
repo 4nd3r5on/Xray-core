@@ -80,6 +80,7 @@ func (h *HealthPing) StartScheduler(selector func() ([]string, error)) {
 	h.ticker = ticker
 	h.tickerClose = tickerClose
 	go func() {
+<<<<<<< HEAD
 		tags, err := selector()
 		if err != nil {
 			newError("error select outbounds for initial health check: ", err).AtWarning().WriteToLog()
@@ -89,6 +90,8 @@ func (h *HealthPing) StartScheduler(selector func() ([]string, error)) {
 	}()
 
 	go func() {
+=======
+>>>>>>> fa5d7a2 (Least load balancer (#2999))
 		for {
 			go func() {
 				tags, err := selector()
