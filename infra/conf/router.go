@@ -10,6 +10,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/common/net"
 	"github.com/4nd3r5on/Xray-core/common/platform/filesystem"
 	"github.com/4nd3r5on/Xray-core/common/serial"
+
 	"google.golang.org/protobuf/proto"
 )
 

@@ -2,7 +2,6 @@ package burst
 
 import (
 	"context"
-
 	"sync"
 
 	"github.com/4nd3r5on/Xray-core/app/observatory"
