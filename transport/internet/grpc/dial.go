@@ -143,7 +143,6 @@ func getGrpcClient(ctx context.Context, dest net.Destination, streamSettings *in
 	}
 
 	dialOptions = append(dialOptions, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
 	authority := ""
 	if grpcSettings.Authority != "" {
 		authority = grpcSettings.Authority
