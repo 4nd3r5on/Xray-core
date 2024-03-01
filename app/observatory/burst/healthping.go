@@ -79,14 +79,6 @@ func (h *HealthPing) StartScheduler(selector func() ([]string, error)) {
 	tickerClose := make(chan struct{})
 	h.ticker = ticker
 	h.tickerClose = tickerClose
-	go func() {
-		tags, err := selector()
-		if err != nil {
-			newError("error select outbounds for initial health check: ", err).AtWarning().WriteToLog()
-			return
-		}
-		h.Check(tags)
-	}()
 
 	go func() {
 		for {
