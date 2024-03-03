@@ -15,6 +15,7 @@ import (
 	"github.com/xtls/xray-core/transport/internet/tls"
 )
 
+<<<<<<< HEAD
 type ConnRF struct {
 	net.Conn
 	Req   *http.Request
@@ -38,6 +39,8 @@ func (c *ConnRF) Read(b []byte) (int, error) {
 	return c.Conn.Read(b)
 }
 
+=======
+>>>>>>> 173b034 (transport: add httpupgrade)
 func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (net.Conn, error) {
 	transportConfiguration := streamSettings.ProtocolSettings.(*Config)
 
@@ -59,9 +62,15 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 		} else {
 			conn = tls.Client(pconn, tlsConfig)
 		}
+<<<<<<< HEAD
 		requestURL.Scheme = "https"
 	} else {
 		conn = pconn
+=======
+
+		requestURL.Scheme = "https"
+	} else {
+>>>>>>> 173b034 (transport: add httpupgrade)
 		requestURL.Scheme = "http"
 	}
 
@@ -73,9 +82,12 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 		Host:   transportConfiguration.Host,
 		Header: make(http.Header),
 	}
+<<<<<<< HEAD
 	for key, value := range transportConfiguration.Header {
 		req.Header.Add(key, value)
 	}
+=======
+>>>>>>> 173b034 (transport: add httpupgrade)
 	req.Header.Set("Connection", "upgrade")
 	req.Header.Set("Upgrade", "websocket")
 
@@ -84,6 +96,7 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 		return nil, err
 	}
 
+<<<<<<< HEAD
 	connRF := &ConnRF{
 		Conn:  conn,
 		Req:   req,
@@ -98,6 +111,20 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 	}
 
 	return connRF, nil
+=======
+	// TODO The bufio usage here is unreliable
+	resp, err := http.ReadResponse(bufio.NewReader(conn), req) // nolint:bodyclose
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Status == "101 Switching Protocols" &&
+		strings.ToLower(resp.Header.Get("Upgrade")) == "websocket" &&
+		strings.ToLower(resp.Header.Get("Connection")) == "upgrade" {
+		return conn, nil
+	}
+	return nil, newError("unrecognized reply")
+>>>>>>> 173b034 (transport: add httpupgrade)
 }
 
 func dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (stat.Connection, error) {

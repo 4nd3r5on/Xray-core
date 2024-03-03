@@ -221,6 +221,24 @@ func (c *HttpUpgradeConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
+type HttpUpgradeConfig struct {
+	Path                string `json:"path"`
+	Host                string `json:"host"`
+	AcceptProxyProtocol bool   `json:"acceptProxyProtocol"`
+}
+
+// Build implements Buildable.
+func (c *HttpUpgradeConfig) Build() (proto.Message, error) {
+	config := &httpupgrade.Config{
+		Path: c.Path,
+		Host: c.Host,
+	}
+	if c.AcceptProxyProtocol {
+		config.AcceptProxyProtocol = c.AcceptProxyProtocol
+	}
+	return config, nil
+}
+
 type HTTPConfig struct {
 	Host               *StringList            `json:"host"`
 	Path               string                 `json:"path"`
