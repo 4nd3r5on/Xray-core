@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/transport/internet/tagged"
+	"github.com/4nd3r5on/Xray-core/common/net"
+	"github.com/4nd3r5on/Xray-core/transport/internet/tagged"
 )
 
 type pingClient struct {
