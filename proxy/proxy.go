@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pires/go-proxyproto"
+	"github.com/4nd3r5on/Xray-core/app/dispatcher"
 	"github.com/4nd3r5on/Xray-core/common/buf"
 	"github.com/4nd3r5on/Xray-core/common/errors"
 	"github.com/4nd3r5on/Xray-core/common/net"
@@ -29,6 +29,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/transport/internet/reality"
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 	"github.com/4nd3r5on/Xray-core/transport/internet/tls"
+	"github.com/pires/go-proxyproto"
 )
 
 var (
@@ -101,7 +102,7 @@ type TrafficState struct {
 	// reader link state
 	WithinPaddingBuffers     bool
 	ReaderSwitchToDirectCopy bool
-	RemainingCommand		 int32
+	RemainingCommand         int32
 	RemainingContent         int32
 	RemainingPadding         int32
 	CurrentCommand           int
@@ -214,7 +215,7 @@ func (w *VisionWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
 					w.trafficState.WriterSwitchToDirectCopy = true
 				}
 				var command byte = CommandPaddingContinue
-				if i == len(mb) - 1 {
+				if i == len(mb)-1 {
 					command = CommandPaddingEnd
 					if w.trafficState.EnableXtls {
 						command = CommandPaddingDirect
@@ -230,7 +231,7 @@ func (w *VisionWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
 				break
 			}
 			var command byte = CommandPaddingContinue
-			if i == len(mb) - 1 && !w.trafficState.IsPadding {
+			if i == len(mb)-1 && !w.trafficState.IsPadding {
 				command = CommandPaddingEnd
 				if w.trafficState.EnableXtls {
 					command = CommandPaddingDirect
@@ -337,11 +338,11 @@ func XtlsUnpadding(b *buf.Buffer, s *TrafficState, ctx context.Context) *buf.Buf
 			case 5:
 				s.CurrentCommand = int(data)
 			case 4:
-				s.RemainingContent = int32(data)<<8
+				s.RemainingContent = int32(data) << 8
 			case 3:
 				s.RemainingContent = s.RemainingContent | int32(data)
 			case 2:
-				s.RemainingPadding = int32(data)<<8
+				s.RemainingPadding = int32(data) << 8
 			case 1:
 				s.RemainingPadding = s.RemainingPadding | int32(data)
 				newError("Xtls Unpadding new block, content ", s.RemainingContent, " padding ", s.RemainingPadding, " command ", s.CurrentCommand).WriteToLog(session.ExportIDToError(ctx))
@@ -478,14 +479,18 @@ func CopyRawConnIfExist(ctx context.Context, readerConn net.Conn, writerConn net
 			for inbound.CanSpliceCopy != 3 {
 				if inbound.CanSpliceCopy == 1 {
 					newError("CopyRawConn splice").WriteToLog(session.ExportIDToError(ctx))
+					statWriter, _ := writer.(*dispatcher.SizeStatWriter)
 					//runtime.Gosched() // necessary
 					time.Sleep(time.Millisecond) // without this, there will be a rare ssl error for freedom splice
 					w, err := tc.ReadFrom(readerConn)
 					if readCounter != nil {
-						readCounter.Add(w)
+						readCounter.Add(w) // outbound stats
 					}
 					if writeCounter != nil {
-						writeCounter.Add(w)
+						writeCounter.Add(w) // inbound stats
+					}
+					if statWriter != nil {
+						statWriter.Counter.Add(w) // user stats
 					}
 					if err != nil && errors.Cause(err) != io.EOF {
 						return err
