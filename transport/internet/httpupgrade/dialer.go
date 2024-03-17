@@ -97,6 +97,9 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 	}
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 18b823b (HTTPUpgrade 0-RTT (#3152))
 	connRF := &ConnRF{
 		Conn:  conn,
 		Req:   req,
@@ -111,6 +114,7 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 	}
 
 	return connRF, nil
+<<<<<<< HEAD
 =======
 	// TODO The bufio usage here is unreliable
 	resp, err := http.ReadResponse(bufio.NewReader(conn), req) // nolint:bodyclose
@@ -125,6 +129,8 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 	}
 	return nil, newError("unrecognized reply")
 >>>>>>> 173b034 (transport: add httpupgrade)
+=======
+>>>>>>> 18b823b (HTTPUpgrade 0-RTT (#3152))
 }
 
 func dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (stat.Connection, error) {
