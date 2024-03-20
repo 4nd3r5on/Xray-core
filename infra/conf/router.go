@@ -8,7 +8,6 @@ import (
 
 	"github.com/xtls/xray-core/app/router"
 	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/common/serial"
 	"github.com/xtls/xray-core/common/platform/filesystem"
 	"github.com/xtls/xray-core/common/serial"
 	"google.golang.org/protobuf/proto"
