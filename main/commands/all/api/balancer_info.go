@@ -53,7 +53,6 @@ func executeBalancerInfo(cmd *base.Command, args []string) {
 	defer close()
 	client := routerService.NewRoutingServiceClient(conn)
 	r := &routerService.GetBalancerInfoRequest{Tag: unnamedArgs[0]}
-
 	resp, err := client.GetBalancerInfo(ctx, r)
 	if err != nil {
 		base.Fatalf("failed to get health information: %s", err)
