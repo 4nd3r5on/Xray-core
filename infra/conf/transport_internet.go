@@ -184,10 +184,17 @@ func (c *WebSocketConfig) Build() (proto.Message, error) {
 }
 
 type HttpUpgradeConfig struct {
+<<<<<<< HEAD
 	Host                string            `json:"host"`
 	Path                string            `json:"path"`
 	Headers             map[string]string `json:"headers"`
 	AcceptProxyProtocol bool              `json:"acceptProxyProtocol"`
+=======
+	Path                string `json:"path"`
+	Host                string `json:"host"`
+	Headers             map[string]string `json:"headers"`
+	AcceptProxyProtocol bool   `json:"acceptProxyProtocol"`
+>>>>>>> 9a619f9 (Add support for HTTPupgrade custom headers)
 }
 
 // Build implements Buildable.
