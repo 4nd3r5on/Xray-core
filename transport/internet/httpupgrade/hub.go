@@ -7,16 +7,13 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/xtls/xray-core/common"
-	"github.com/xtls/xray-core/common/net"
-<<<<<<< HEAD
-	http_proto "github.com/xtls/xray-core/common/protocol/http"
-=======
->>>>>>> 173b034 (transport: add httpupgrade)
-	"github.com/xtls/xray-core/common/session"
-	"github.com/xtls/xray-core/transport/internet"
-	"github.com/xtls/xray-core/transport/internet/stat"
-	v2tls "github.com/xtls/xray-core/transport/internet/tls"
+	"github.com/4nd3r5on/Xray-core/common"
+	"github.com/4nd3r5on/Xray-core/common/net"
+	http_proto "github.com/4nd3r5on/Xray-core/common/protocol/http"
+	"github.com/4nd3r5on/Xray-core/common/session"
+	"github.com/4nd3r5on/Xray-core/transport/internet"
+	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
+	v2tls "github.com/4nd3r5on/Xray-core/transport/internet/tls"
 )
 
 type server struct {
@@ -72,7 +69,6 @@ func (s *server) Handle(conn net.Conn) (stat.Connection, error) {
 		_ = conn.Close()
 		return nil, err
 	}
-<<<<<<< HEAD
 
 	forwardedAddrs := http_proto.ParseXForwardedFor(req.Header)
 	remoteAddr := conn.RemoteAddr()
@@ -87,8 +83,6 @@ func (s *server) Handle(conn net.Conn) (stat.Connection, error) {
 	}
 
 	conn = newConnection(conn, remoteAddr)
-=======
->>>>>>> 173b034 (transport: add httpupgrade)
 	return stat.Connection(conn), nil
 }
 

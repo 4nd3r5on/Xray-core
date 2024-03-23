@@ -1,15 +1,15 @@
 package command
 
-//go:generate go run github.com/xtls/xray-core/common/errors/errorgen
+//go:generate go run github.com/4nd3r5on/Xray-core/common/errors/errorgen
 
 import (
 	"context"
 	"time"
 
-	"github.com/xtls/xray-core/common"
-	"github.com/xtls/xray-core/core"
-	"github.com/xtls/xray-core/features/routing"
-	"github.com/xtls/xray-core/features/stats"
+	"github.com/4nd3r5on/Xray-core/common"
+	"github.com/4nd3r5on/Xray-core/core"
+	"github.com/4nd3r5on/Xray-core/features/routing"
+	"github.com/4nd3r5on/Xray-core/features/stats"
 	"google.golang.org/grpc"
 )
 
@@ -54,7 +54,6 @@ func (s *routingServer) OverrideBalancerTarget(ctx context.Context, request *Ove
 	return nil, newError("unsupported router implementation")
 }
 
-<<<<<<< HEAD
 func (s *routingServer) AddRule(ctx context.Context, request *AddRuleRequest) (*AddRuleResponse, error) {
 	if bo, ok := s.router.(routing.Router); ok {
 		return &AddRuleResponse{}, bo.AddRule(request.Config, request.ShouldAppend)
@@ -69,8 +68,6 @@ func (s *routingServer) RemoveRule(ctx context.Context, request *RemoveRuleReque
 	return nil, newError("unsupported router implementation")
 }
 
-=======
->>>>>>> fa5d7a2 (Least load balancer (#2999))
 // NewRoutingServer creates a statistics service with statistics manager.
 func NewRoutingServer(router routing.Router, routingStats stats.Channel) RoutingServiceServer {
 	return &routingServer{

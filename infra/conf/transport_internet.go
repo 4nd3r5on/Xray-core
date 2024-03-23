@@ -11,21 +11,21 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/xtls/xray-core/common/net"
-	"github.com/xtls/xray-core/common/platform/filesystem"
-	"github.com/xtls/xray-core/common/protocol"
-	"github.com/xtls/xray-core/common/serial"
-	"github.com/xtls/xray-core/transport/internet"
-	"github.com/xtls/xray-core/transport/internet/domainsocket"
-	httpheader "github.com/xtls/xray-core/transport/internet/headers/http"
-	"github.com/xtls/xray-core/transport/internet/http"
-	"github.com/xtls/xray-core/transport/internet/httpupgrade"
-	"github.com/xtls/xray-core/transport/internet/kcp"
-	"github.com/xtls/xray-core/transport/internet/quic"
-	"github.com/xtls/xray-core/transport/internet/reality"
-	"github.com/xtls/xray-core/transport/internet/tcp"
-	"github.com/xtls/xray-core/transport/internet/tls"
-	"github.com/xtls/xray-core/transport/internet/websocket"
+	"github.com/4nd3r5on/Xray-core/common/net"
+	"github.com/4nd3r5on/Xray-core/common/platform/filesystem"
+	"github.com/4nd3r5on/Xray-core/common/protocol"
+	"github.com/4nd3r5on/Xray-core/common/serial"
+	"github.com/4nd3r5on/Xray-core/transport/internet"
+	"github.com/4nd3r5on/Xray-core/transport/internet/domainsocket"
+	httpheader "github.com/4nd3r5on/Xray-core/transport/internet/headers/http"
+	"github.com/4nd3r5on/Xray-core/transport/internet/http"
+	"github.com/4nd3r5on/Xray-core/transport/internet/httpupgrade"
+	"github.com/4nd3r5on/Xray-core/transport/internet/kcp"
+	"github.com/4nd3r5on/Xray-core/transport/internet/quic"
+	"github.com/4nd3r5on/Xray-core/transport/internet/reality"
+	"github.com/4nd3r5on/Xray-core/transport/internet/tcp"
+	"github.com/4nd3r5on/Xray-core/transport/internet/tls"
+	"github.com/4nd3r5on/Xray-core/transport/internet/websocket"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -165,7 +165,6 @@ func (c *WebSocketConfig) Build() (proto.Message, error) {
 			path = u.String()
 		}
 	}
-<<<<<<< HEAD
 	// If http host is not set in the Host field, but in headers field, we add it to Host Field here.
 	// If we don't do that, http host will be overwritten as address.
 	// Host priority: Host field > headers field > address.
@@ -216,39 +215,6 @@ func (c *HttpUpgradeConfig) Build() (proto.Message, error) {
 		Path:                path,
 		Host:                c.Host,
 		Header:              c.Headers,
-=======
-	config := &websocket.Config{
-		Path:                path,
-		Header:              header,
->>>>>>> 18b823b (HTTPUpgrade 0-RTT (#3152))
-		AcceptProxyProtocol: c.AcceptProxyProtocol,
-		Ed:                  ed,
-	}
-	return config, nil
-}
-
-type HttpUpgradeConfig struct {
-	Path                string `json:"path"`
-	Host                string `json:"host"`
-	AcceptProxyProtocol bool   `json:"acceptProxyProtocol"`
-}
-
-// Build implements Buildable.
-func (c *HttpUpgradeConfig) Build() (proto.Message, error) {
-	path := c.Path
-	var ed uint32
-	if u, err := url.Parse(path); err == nil {
-		if q := u.Query(); q.Get("ed") != "" {
-			Ed, _ := strconv.Atoi(q.Get("ed"))
-			ed = uint32(Ed)
-			q.Del("ed")
-			u.RawQuery = q.Encode()
-			path = u.String()
-		}
-	}
-	config := &httpupgrade.Config{
-		Path:                path,
-		Host:                c.Host,
 		AcceptProxyProtocol: c.AcceptProxyProtocol,
 		Ed:                  ed,
 	}

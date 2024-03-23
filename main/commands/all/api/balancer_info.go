@@ -5,8 +5,8 @@ import (
 	"os"
 	"strings"
 
-	routerService "github.com/xtls/xray-core/app/router/command"
-	"github.com/xtls/xray-core/main/commands/base"
+	routerService "github.com/4nd3r5on/Xray-core/app/router/command"
+	"github.com/4nd3r5on/Xray-core/main/commands/base"
 )
 
 // TODO: support "-json" flag for json output
@@ -43,7 +43,6 @@ Example:
 func executeBalancerInfo(cmd *base.Command, args []string) {
 	setSharedFlags(cmd)
 	cmd.Flag.Parse(args)
-<<<<<<< HEAD
 	unnamedArgs := cmd.Flag.Args()
 	if len(unnamedArgs) == 0 {
 		fmt.Println("set balancer tag")
@@ -54,14 +53,7 @@ func executeBalancerInfo(cmd *base.Command, args []string) {
 	defer close()
 	client := routerService.NewRoutingServiceClient(conn)
 	r := &routerService.GetBalancerInfoRequest{Tag: unnamedArgs[0]}
-=======
 
-	conn, ctx, close := dialAPIServer()
-	defer close()
-
-	client := routerService.NewRoutingServiceClient(conn)
-	r := &routerService.GetBalancerInfoRequest{Tag: args[0]}
->>>>>>> fa5d7a2 (Least load balancer (#2999))
 	resp, err := client.GetBalancerInfo(ctx, r)
 	if err != nil {
 		base.Fatalf("failed to get health information: %s", err)
@@ -88,16 +80,10 @@ func showBalancerInfo(b *routerService.BalancerMsg) {
 	}
 	// Selects
 	sb.WriteString("  - Selects:\n")
-<<<<<<< HEAD
 	if b.PrincipleTarget != nil {
 		for i, o := range b.PrincipleTarget.Tag {
 			writeRow(sb, tableIndent, i+1, []string{o}, nil)
 		}
-=======
-
-	for i, o := range b.PrincipleTarget.Tag {
-		writeRow(sb, tableIndent, i+1, []string{o}, nil)
->>>>>>> fa5d7a2 (Least load balancer (#2999))
 	}
 	os.Stdout.WriteString(sb.String())
 }
