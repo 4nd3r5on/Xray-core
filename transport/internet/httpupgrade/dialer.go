@@ -73,10 +73,7 @@ func dialhttpUpgrade(ctx context.Context, dest net.Destination, streamSettings *
 		Host:   transportConfiguration.Host,
 		Header: make(http.Header),
 	}
-<<<<<<< HEAD
 
-=======
->>>>>>> 9a619f9 (Add support for HTTPupgrade custom headers)
 	for key, value := range transportConfiguration.Header {
 		req.Header.Add(key, value)
 	}
