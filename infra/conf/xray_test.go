@@ -236,7 +236,10 @@ func TestXrayConfig(t *testing.T) {
 									{
 										ProtocolName: "websocket",
 										Settings: serial.ToTypedMessage(&websocket.Config{
+<<<<<<< HEAD
 											Host: "example.domain",
+=======
+>>>>>>> e2302b4 (Update proto file for websocket and httpupgrade (breaking))
 											Header: map[string]string{
 												"host": "example.domain",
 											},
@@ -289,7 +292,10 @@ func TestXrayConfig(t *testing.T) {
 									{
 										ProtocolName: "websocket",
 										Settings: serial.ToTypedMessage(&websocket.Config{
+<<<<<<< HEAD
 											Host: "example.domain",
+=======
+>>>>>>> e2302b4 (Update proto file for websocket and httpupgrade (breaking))
 											Header: map[string]string{
 												"host": "example.domain",
 											},
