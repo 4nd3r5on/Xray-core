@@ -3,8 +3,13 @@ package api
 import (
 	"fmt"
 
+<<<<<<< HEAD
 	routerService "github.com/4nd3r5on/Xray-core/app/router/command"
 	"github.com/4nd3r5on/Xray-core/main/commands/base"
+=======
+	routerService "github.com/xtls/xray-core/app/router/command"
+	"github.com/xtls/xray-core/main/commands/base"
+>>>>>>> 53e5814 (API - Add | Remove Routing Rules  (#3189))
 )
 
 var cmdRemoveRules = &base.Command{

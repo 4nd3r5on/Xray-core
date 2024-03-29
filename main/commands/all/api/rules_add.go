@@ -3,11 +3,19 @@ package api
 import (
 	"fmt"
 
+<<<<<<< HEAD
 	routerService "github.com/4nd3r5on/Xray-core/app/router/command"
 	cserial "github.com/4nd3r5on/Xray-core/common/serial"
 	"github.com/4nd3r5on/Xray-core/infra/conf"
 	"github.com/4nd3r5on/Xray-core/infra/conf/serial"
 	"github.com/4nd3r5on/Xray-core/main/commands/base"
+=======
+	routerService "github.com/xtls/xray-core/app/router/command"
+	cserial "github.com/xtls/xray-core/common/serial"
+	"github.com/xtls/xray-core/infra/conf"
+	"github.com/xtls/xray-core/infra/conf/serial"
+	"github.com/xtls/xray-core/main/commands/base"
+>>>>>>> 53e5814 (API - Add | Remove Routing Rules  (#3189))
 )
 
 var cmdAddRules = &base.Command{
