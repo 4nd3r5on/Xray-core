@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/4nd3r5on/Xray-core/app/dispatcher"
 	"github.com/4nd3r5on/Xray-core/app/log"
 	"github.com/4nd3r5on/Xray-core/app/proxyman"
@@ -26,6 +25,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/transport/internet/http"
 	"github.com/4nd3r5on/Xray-core/transport/internet/tls"
 	"github.com/4nd3r5on/Xray-core/transport/internet/websocket"
+	"github.com/google/go-cmp/cmp"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -236,10 +236,7 @@ func TestXrayConfig(t *testing.T) {
 									{
 										ProtocolName: "websocket",
 										Settings: serial.ToTypedMessage(&websocket.Config{
-<<<<<<< HEAD
 											Host: "example.domain",
-=======
->>>>>>> e2302b4 (Update proto file for websocket and httpupgrade (breaking))
 											Header: map[string]string{
 												"host": "example.domain",
 											},
@@ -292,10 +289,7 @@ func TestXrayConfig(t *testing.T) {
 									{
 										ProtocolName: "websocket",
 										Settings: serial.ToTypedMessage(&websocket.Config{
-<<<<<<< HEAD
 											Host: "example.domain",
-=======
->>>>>>> e2302b4 (Update proto file for websocket and httpupgrade (breaking))
 											Header: map[string]string{
 												"host": "example.domain",
 											},
