@@ -15,19 +15,19 @@ import (
 // TimedUserValidator is a user Validator based on time.
 type TimedUserValidator struct {
 	sync.RWMutex
-	users []*protocol.MemoryUser
+	Users []*protocol.MemoryUser
 
-	behaviorSeed  uint64
-	behaviorFused bool
+	BehaviorSeed  uint64
+	BehaviorFused bool
 
-	aeadDecoderHolder *aead.AuthIDDecoderHolder
+	AeadDecoderHolder *aead.AuthIDDecoderHolder
 }
 
 // NewTimedUserValidator creates a new TimedUserValidator.
 func NewTimedUserValidator() *TimedUserValidator {
 	tuv := &TimedUserValidator{
-		users:             make([]*protocol.MemoryUser, 0, 16),
-		aeadDecoderHolder: aead.NewAuthIDDecoderHolder(),
+		Users:             make([]*protocol.MemoryUser, 0, 16),
+		AeadDecoderHolder: aead.NewAuthIDDecoderHolder(),
 	}
 	return tuv
 }
@@ -36,18 +36,18 @@ func (v *TimedUserValidator) Add(u *protocol.MemoryUser) error {
 	v.Lock()
 	defer v.Unlock()
 
-	v.users = append(v.users, u)
+	v.Users = append(v.Users, u)
 
 	account := u.Account.(*MemoryAccount)
-	if !v.behaviorFused {
+	if !v.BehaviorFused {
 		hashkdf := hmac.New(sha256.New, []byte("VMESSBSKDF"))
 		hashkdf.Write(account.ID.Bytes())
-		v.behaviorSeed = crc64.Update(v.behaviorSeed, crc64.MakeTable(crc64.ECMA), hashkdf.Sum(nil))
+		v.BehaviorSeed = crc64.Update(v.BehaviorSeed, crc64.MakeTable(crc64.ECMA), hashkdf.Sum(nil))
 	}
 
 	var cmdkeyfl [16]byte
 	copy(cmdkeyfl[:], account.ID.CmdKey())
-	v.aeadDecoderHolder.AddUser(cmdkeyfl, u)
+	v.AeadDecoderHolder.AddUser(cmdkeyfl, u)
 
 	return nil
 }
@@ -59,7 +59,7 @@ func (v *TimedUserValidator) GetAEAD(userHash []byte) (*protocol.MemoryUser, boo
 	var userHashFL [16]byte
 	copy(userHashFL[:], userHash)
 
-	userd, err := v.aeadDecoderHolder.Match(userHashFL)
+	userd, err := v.AeadDecoderHolder.Match(userHashFL)
 	if err != nil {
 		return nil, false, err
 	}
@@ -72,23 +72,23 @@ func (v *TimedUserValidator) Remove(email string) bool {
 
 	email = strings.ToLower(email)
 	idx := -1
-	for i, u := range v.users {
+	for i, u := range v.Users {
 		if strings.EqualFold(u.Email, email) {
 			idx = i
 			var cmdkeyfl [16]byte
 			copy(cmdkeyfl[:], u.Account.(*MemoryAccount).ID.CmdKey())
-			v.aeadDecoderHolder.RemoveUser(cmdkeyfl)
+			v.AeadDecoderHolder.RemoveUser(cmdkeyfl)
 			break
 		}
 	}
 	if idx == -1 {
 		return false
 	}
-	ulen := len(v.users)
+	ulen := len(v.Users)
 
-	v.users[idx] = v.users[ulen-1]
-	v.users[ulen-1] = nil
-	v.users = v.users[:ulen-1]
+	v.Users[idx] = v.Users[ulen-1]
+	v.Users[ulen-1] = nil
+	v.Users = v.Users[:ulen-1]
 
 	return true
 }
@@ -97,11 +97,11 @@ func (v *TimedUserValidator) GetBehaviorSeed() uint64 {
 	v.Lock()
 	defer v.Unlock()
 
-	v.behaviorFused = true
-	if v.behaviorSeed == 0 {
-		v.behaviorSeed = dice.RollUint64()
+	v.BehaviorFused = true
+	if v.BehaviorSeed == 0 {
+		v.BehaviorSeed = dice.RollUint64()
 	}
-	return v.behaviorSeed
+	return v.BehaviorSeed
 }
 
 var ErrNotFound = newError("Not Found")

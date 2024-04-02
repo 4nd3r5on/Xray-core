@@ -31,6 +31,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/proxy"
 	"github.com/4nd3r5on/Xray-core/proxy/vless"
 	"github.com/4nd3r5on/Xray-core/proxy/vless/encoding"
+	xray_vless_inbound_callbacks "github.com/4nd3r5on/Xray-core/proxy/vless/inbound/callbacks"
 	"github.com/4nd3r5on/Xray-core/transport/internet/reality"
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 	"github.com/4nd3r5on/Xray-core/transport/internet/tls"
@@ -51,22 +52,25 @@ func init() {
 
 // Handler is an inbound connection handler that handles messages in VLess protocol.
 type Handler struct {
-	inboundHandlerManager feature_inbound.Manager
-	policyManager         policy.Manager
-	validator             *vless.Validator
-	dns                   dns.Client
-	fallbacks             map[string]map[string]map[string]*Fallback // or nil
+	InboundHandlerManager feature_inbound.Manager
+	PolicyManager         policy.Manager
+	Validator             *vless.Validator
+	Dns                   dns.Client
+	Fallbacks             map[string]map[string]map[string]*Fallback // or nil
+	CallbackManager       *xray_vless_inbound_callbacks.CallbackManager
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
 // New creates a new VLess inbound handler.
 func New(ctx context.Context, config *Config, dc dns.Client) (*Handler, error) {
 	v := core.MustFromContext(ctx)
+	cm := xray_vless_inbound_callbacks.NewCallbackManager()
 	handler := &Handler{
-		inboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
-		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
-		validator:             new(vless.Validator),
-		dns:                   dc,
+		InboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
+		PolicyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
+		Validator:             new(vless.Validator),
+		Dns:                   dc,
+		CallbackManager:       cm,
 	}
 
 	for _, user := range config.Clients {
@@ -80,16 +84,16 @@ func New(ctx context.Context, config *Config, dc dns.Client) (*Handler, error) {
 	}
 
 	if config.Fallbacks != nil {
-		handler.fallbacks = make(map[string]map[string]map[string]*Fallback)
+		handler.Fallbacks = make(map[string]map[string]map[string]*Fallback)
 		// handler.regexps = make(map[string]*regexp.Regexp)
 		for _, fb := range config.Fallbacks {
-			if handler.fallbacks[fb.Name] == nil {
-				handler.fallbacks[fb.Name] = make(map[string]map[string]*Fallback)
+			if handler.Fallbacks[fb.Name] == nil {
+				handler.Fallbacks[fb.Name] = make(map[string]map[string]*Fallback)
 			}
-			if handler.fallbacks[fb.Name][fb.Alpn] == nil {
-				handler.fallbacks[fb.Name][fb.Alpn] = make(map[string]*Fallback)
+			if handler.Fallbacks[fb.Name][fb.Alpn] == nil {
+				handler.Fallbacks[fb.Name][fb.Alpn] = make(map[string]*Fallback)
 			}
-			handler.fallbacks[fb.Name][fb.Alpn][fb.Path] = fb
+			handler.Fallbacks[fb.Name][fb.Alpn][fb.Path] = fb
 			/*
 				if fb.Path != "" {
 					if r, err := regexp.Compile(fb.Path); err != nil {
@@ -100,10 +104,10 @@ func New(ctx context.Context, config *Config, dc dns.Client) (*Handler, error) {
 				}
 			*/
 		}
-		if handler.fallbacks[""] != nil {
-			for name, apfb := range handler.fallbacks {
+		if handler.Fallbacks[""] != nil {
+			for name, apfb := range handler.Fallbacks {
 				if name != "" {
-					for alpn := range handler.fallbacks[""] {
+					for alpn := range handler.Fallbacks[""] {
 						if apfb[alpn] == nil {
 							apfb[alpn] = make(map[string]*Fallback)
 						}
@@ -111,7 +115,7 @@ func New(ctx context.Context, config *Config, dc dns.Client) (*Handler, error) {
 				}
 			}
 		}
-		for _, apfb := range handler.fallbacks {
+		for _, apfb := range handler.Fallbacks {
 			if apfb[""] != nil {
 				for alpn, pfb := range apfb {
 					if alpn != "" { // && alpn != "h2" {
@@ -124,10 +128,10 @@ func New(ctx context.Context, config *Config, dc dns.Client) (*Handler, error) {
 				}
 			}
 		}
-		if handler.fallbacks[""] != nil {
-			for name, apfb := range handler.fallbacks {
+		if handler.Fallbacks[""] != nil {
+			for name, apfb := range handler.Fallbacks {
 				if name != "" {
-					for alpn, pfb := range handler.fallbacks[""] {
+					for alpn, pfb := range handler.Fallbacks[""] {
 						for path, fb := range pfb {
 							if apfb[alpn][path] == nil {
 								apfb[alpn][path] = fb
@@ -157,17 +161,17 @@ func isMuxAndNotXUDP(request *protocol.RequestHeader, first *buf.Buffer) bool {
 
 // Close implements common.Closable.Close().
 func (h *Handler) Close() error {
-	return errors.Combine(common.Close(h.validator))
+	return errors.Combine(common.Close(h.Validator))
 }
 
 // AddUser implements proxy.UserManager.AddUser().
 func (h *Handler) AddUser(ctx context.Context, u *protocol.MemoryUser) error {
-	return h.validator.Add(u)
+	return h.Validator.Add(u)
 }
 
 // RemoveUser implements proxy.UserManager.RemoveUser().
 func (h *Handler) RemoveUser(ctx context.Context, e string) error {
-	return h.validator.Del(e)
+	return h.Validator.Del(e)
 }
 
 // Network implements proxy.Inbound.Network().
@@ -184,7 +188,7 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 		iConn = statConn.Connection
 	}
 
-	sessionPolicy := h.policyManager.ForLevel(0)
+	sessionPolicy := h.PolicyManager.ForLevel(0)
 	if err := connection.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake)); err != nil {
 		return newError("unable to set read deadline").Base(err).AtWarning()
 	}
@@ -203,13 +207,13 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	var requestAddons *encoding.Addons
 	var err error
 
-	napfb := h.fallbacks
+	napfb := h.Fallbacks
 	isfb := napfb != nil
 
 	if isfb && firstLen < 18 {
 		err = newError("fallback directly")
 	} else {
-		request, requestAddons, isfb, err = encoding.DecodeRequestHeader(isfb, first, reader, h.validator)
+		request, requestAddons, isfb, err = encoding.DecodeRequestHeader(isfb, first, reader, h.Validator)
 	}
 
 	if err != nil {
@@ -439,6 +443,9 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.User = request.User
 
 	account := request.User.Account.(*vless.MemoryAccount)
+	if callbackID, err := h.CallbackManager.ExecOnProcess(account); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
+	}
 
 	responseAddons := &encoding.Addons{
 		// Flow: requestAddons.Flow,
@@ -499,7 +506,7 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 		ctx = session.ContextWithAllowedNetwork(ctx, net.Network_UDP)
 	}
 
-	sessionPolicy = h.policyManager.ForLevel(request.User.Level)
+	sessionPolicy = h.PolicyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
 	ctx = policy.ContextWithBufferPolicy(ctx, sessionPolicy.Buffer)
