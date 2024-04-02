@@ -6,7 +6,6 @@ import (
 	"context"
 	sync "sync"
 
-<<<<<<< HEAD
 	"github.com/4nd3r5on/Xray-core/common"
 	"github.com/4nd3r5on/Xray-core/common/serial"
 	"github.com/4nd3r5on/Xray-core/core"
@@ -14,15 +13,6 @@ import (
 	"github.com/4nd3r5on/Xray-core/features/outbound"
 	"github.com/4nd3r5on/Xray-core/features/routing"
 	routing_dns "github.com/4nd3r5on/Xray-core/features/routing/dns"
-=======
-	"github.com/xtls/xray-core/common"
-	"github.com/xtls/xray-core/common/serial"
-	"github.com/xtls/xray-core/core"
-	"github.com/xtls/xray-core/features/dns"
-	"github.com/xtls/xray-core/features/outbound"
-	"github.com/xtls/xray-core/features/routing"
-	routing_dns "github.com/xtls/xray-core/features/routing/dns"
->>>>>>> 53e5814 (API - Add | Remove Routing Rules  (#3189))
 )
 
 // Router is an implementation of routing.Router.
