@@ -2,6 +2,12 @@ module github.com/4nd3r5on/Xray-core
 
 go 1.22
 
+replace github.com/xtls/xray-core => ./
+
+retract (
+  v1.8.10
+)
+
 require (
 	github.com/ghodss/yaml v1.0.1-0.20220118164431-d8423dcdf344
 	github.com/golang/mock v1.7.0-rc.1
