@@ -21,6 +21,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/core"
 	"github.com/4nd3r5on/Xray-core/features/policy"
 	"github.com/4nd3r5on/Xray-core/features/routing"
+	callbacks "github.com/4nd3r5on/Xray-core/proxy/trojan/callbacks"
 	"github.com/4nd3r5on/Xray-core/transport/internet/reality"
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 	"github.com/4nd3r5on/Xray-core/transport/internet/tls"
@@ -35,10 +36,11 @@ func init() {
 
 // Server is an inbound connection handler that handles messages in trojan protocol.
 type Server struct {
-	policyManager policy.Manager
-	validator     *Validator
-	fallbacks     map[string]map[string]map[string]*Fallback // or nil
-	cone          bool
+	CallbackManager *callbacks.ServerCallbackManager
+	PolicyManager   policy.Manager
+	Validator       *Validator
+	Fallbacks       map[string]map[string]map[string]*Fallback // or nil
+	Cone            bool
 }
 
 // NewServer creates a new trojan inbound handler.
@@ -55,28 +57,30 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 		}
 	}
 
+	cm := callbacks.NewServerCallbackManager()
 	v := core.MustFromContext(ctx)
 	server := &Server{
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		validator:     validator,
-		cone:          ctx.Value("cone").(bool),
+		CallbackManager: cm,
+		PolicyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		Validator:       validator,
+		Cone:            ctx.Value("cone").(bool),
 	}
 
 	if config.Fallbacks != nil {
-		server.fallbacks = make(map[string]map[string]map[string]*Fallback)
+		server.Fallbacks = make(map[string]map[string]map[string]*Fallback)
 		for _, fb := range config.Fallbacks {
-			if server.fallbacks[fb.Name] == nil {
-				server.fallbacks[fb.Name] = make(map[string]map[string]*Fallback)
+			if server.Fallbacks[fb.Name] == nil {
+				server.Fallbacks[fb.Name] = make(map[string]map[string]*Fallback)
 			}
-			if server.fallbacks[fb.Name][fb.Alpn] == nil {
-				server.fallbacks[fb.Name][fb.Alpn] = make(map[string]*Fallback)
+			if server.Fallbacks[fb.Name][fb.Alpn] == nil {
+				server.Fallbacks[fb.Name][fb.Alpn] = make(map[string]*Fallback)
 			}
-			server.fallbacks[fb.Name][fb.Alpn][fb.Path] = fb
+			server.Fallbacks[fb.Name][fb.Alpn][fb.Path] = fb
 		}
-		if server.fallbacks[""] != nil {
-			for name, apfb := range server.fallbacks {
+		if server.Fallbacks[""] != nil {
+			for name, apfb := range server.Fallbacks {
 				if name != "" {
-					for alpn := range server.fallbacks[""] {
+					for alpn := range server.Fallbacks[""] {
 						if apfb[alpn] == nil {
 							apfb[alpn] = make(map[string]*Fallback)
 						}
@@ -84,7 +88,7 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 				}
 			}
 		}
-		for _, apfb := range server.fallbacks {
+		for _, apfb := range server.Fallbacks {
 			if apfb[""] != nil {
 				for alpn, pfb := range apfb {
 					if alpn != "" { // && alpn != "h2" {
@@ -97,10 +101,10 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 				}
 			}
 		}
-		if server.fallbacks[""] != nil {
-			for name, apfb := range server.fallbacks {
+		if server.Fallbacks[""] != nil {
+			for name, apfb := range server.Fallbacks {
 				if name != "" {
-					for alpn, pfb := range server.fallbacks[""] {
+					for alpn, pfb := range server.Fallbacks[""] {
 						for path, fb := range pfb {
 							if apfb[alpn][path] == nil {
 								apfb[alpn][path] = fb
@@ -117,12 +121,12 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 
 // AddUser implements proxy.UserManager.AddUser().
 func (s *Server) AddUser(ctx context.Context, u *protocol.MemoryUser) error {
-	return s.validator.Add(u)
+	return s.Validator.Add(u)
 }
 
 // RemoveUser implements proxy.UserManager.RemoveUser().
 func (s *Server) RemoveUser(ctx context.Context, e string) error {
-	return s.validator.Del(e)
+	return s.Validator.Del(e)
 }
 
 // Network implements proxy.Inbound.Network().
@@ -140,7 +144,7 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 		iConn = statConn.Connection
 	}
 
-	sessionPolicy := s.policyManager.ForLevel(0)
+	sessionPolicy := s.PolicyManager.ForLevel(0)
 	if err := conn.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake)); err != nil {
 		return newError("unable to set read deadline").Base(err).AtWarning()
 	}
@@ -160,7 +164,7 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 
 	var user *protocol.MemoryUser
 
-	napfb := s.fallbacks
+	napfb := s.Fallbacks
 	isfb := napfb != nil
 
 	shouldFallback := false
@@ -176,7 +180,7 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 
 		shouldFallback = true
 	} else {
-		user = s.validator.Get(hexString(first.BytesTo(56)))
+		user = s.Validator.Get(hexString(first.BytesTo(56)))
 		if user == nil {
 			// invalid user, let's fallback
 			err = newError("not a valid user")
@@ -217,7 +221,11 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound.Name = "trojan"
 	inbound.SetCanSpliceCopy(3)
 	inbound.User = user
-	sessionPolicy = s.policyManager.ForLevel(user.Level)
+	sessionPolicy = s.PolicyManager.ForLevel(user.Level)
+
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
+	}
 
 	if destination.Network == net.Network_UDP { // handle udp request
 		return s.handleUDPPayload(ctx, &PacketReader{Reader: clientReader}, &PacketWriter{Writer: conn}, dispatcher)
@@ -283,7 +291,7 @@ func (s *Server) handleUDPPayload(ctx context.Context, clientReader *PacketReade
 			}
 			newError("tunnelling request to ", destination).WriteToLog(session.ExportIDToError(ctx))
 
-			if !s.cone || dest == nil {
+			if !s.Cone || dest == nil {
 				dest = &destination
 			}
 
