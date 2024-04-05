@@ -16,15 +16,17 @@ import (
 	"github.com/4nd3r5on/Xray-core/core"
 	"github.com/4nd3r5on/Xray-core/features/policy"
 	"github.com/4nd3r5on/Xray-core/features/routing"
+	callbacks "github.com/4nd3r5on/Xray-core/proxy/shadowsocks/callbacks"
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 	"github.com/4nd3r5on/Xray-core/transport/internet/udp"
 )
 
 type Server struct {
-	config        *ServerConfig
-	validator     *Validator
-	policyManager policy.Manager
-	cone          bool
+	CallbackManager *callbacks.ServerCallbackManager
+	Config          *ServerConfig
+	Validator       *Validator
+	PolicyManager   policy.Manager
+	Cone            bool
 }
 
 // NewServer create a new Shadowsocks server.
@@ -41,12 +43,14 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 		}
 	}
 
+	cm := callbacks.NewServerCallbackManager()
 	v := core.MustFromContext(ctx)
 	s := &Server{
-		config:        config,
-		validator:     validator,
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		cone:          ctx.Value("cone").(bool),
+		CallbackManager: cm,
+		Config:          config,
+		Validator:       validator,
+		PolicyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		Cone:            ctx.Value("cone").(bool),
 	}
 
 	return s, nil
@@ -54,16 +58,16 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 
 // AddUser implements proxy.UserManager.AddUser().
 func (s *Server) AddUser(ctx context.Context, u *protocol.MemoryUser) error {
-	return s.validator.Add(u)
+	return s.Validator.Add(u)
 }
 
 // RemoveUser implements proxy.UserManager.RemoveUser().
 func (s *Server) RemoveUser(ctx context.Context, e string) error {
-	return s.validator.Del(e)
+	return s.Validator.Del(e)
 }
 
 func (s *Server) Network() []net.Network {
-	list := s.config.Network
+	list := s.Config.Network
 	if len(list) == 0 {
 		list = append(list, net.Network_TCP)
 	}
@@ -74,7 +78,11 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound := session.InboundFromContext(ctx)
 	inbound.Name = "shadowsocks"
 	inbound.SetCanSpliceCopy(3)
-	
+
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
+	}
+
 	switch network {
 	case net.Network_TCP:
 		return s.handleConnection(ctx, conn, dispatcher)
@@ -132,7 +140,7 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 				validator.Add(inbound.User)
 				request, data, err = DecodeUDPPacket(validator, payload)
 			} else {
-				request, data, err = DecodeUDPPacket(s.validator, payload)
+				request, data, err = DecodeUDPPacket(s.Validator, payload)
 				if err == nil {
 					inbound.User = request.User
 				}
@@ -168,7 +176,7 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 
 			data.UDP = &destination
 
-			if !s.cone || dest == nil {
+			if !s.Cone || dest == nil {
 				dest = &destination
 			}
 
@@ -181,13 +189,13 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 }
 
 func (s *Server) handleConnection(ctx context.Context, conn stat.Connection, dispatcher routing.Dispatcher) error {
-	sessionPolicy := s.policyManager.ForLevel(0)
+	sessionPolicy := s.PolicyManager.ForLevel(0)
 	if err := conn.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake)); err != nil {
 		return newError("unable to set read deadline").Base(err).AtWarning()
 	}
 
 	bufferedReader := buf.BufferedReader{Reader: buf.NewReader(conn)}
-	request, bodyReader, err := ReadTCPSession(s.validator, &bufferedReader)
+	request, bodyReader, err := ReadTCPSession(s.Validator, &bufferedReader)
 	if err != nil {
 		log.Record(&log.AccessMessage{
 			From:   conn.RemoteAddr(),
@@ -215,7 +223,7 @@ func (s *Server) handleConnection(ctx context.Context, conn stat.Connection, dis
 	})
 	newError("tunnelling request to ", dest).WriteToLog(session.ExportIDToError(ctx))
 
-	sessionPolicy = s.policyManager.ForLevel(request.User.Level)
+	sessionPolicy = s.PolicyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
 

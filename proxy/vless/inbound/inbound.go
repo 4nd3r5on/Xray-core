@@ -441,11 +441,7 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	}
 	inbound.Name = "vless"
 	inbound.User = request.User
-
 	account := request.User.Account.(*vless.MemoryAccount)
-	if callbackID, err := h.CallbackManager.ExecOnProcess(account); err != nil {
-		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
-	}
 
 	responseAddons := &encoding.Addons{
 		// Flow: requestAddons.Flow,
@@ -492,6 +488,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 		}
 	default:
 		return newError("unknown request flow " + requestAddons.Flow).AtWarning()
+	}
+
+	if callbackID, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
 	}
 
 	if request.Command != protocol.RequestCommandMux {

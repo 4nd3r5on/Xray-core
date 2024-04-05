@@ -15,10 +15,10 @@ import (
 // Validator stores valid Shadowsocks users.
 type Validator struct {
 	sync.RWMutex
-	users []*protocol.MemoryUser
+	Users []*protocol.MemoryUser
 
-	behaviorSeed  uint64
-	behaviorFused bool
+	BehaviorSeed  uint64
+	BehaviorFused bool
 }
 
 var ErrNotFound = newError("Not Found")
@@ -29,15 +29,15 @@ func (v *Validator) Add(u *protocol.MemoryUser) error {
 	defer v.Unlock()
 
 	account := u.Account.(*MemoryAccount)
-	if !account.Cipher.IsAEAD() && len(v.users) > 0 {
+	if !account.Cipher.IsAEAD() && len(v.Users) > 0 {
 		return newError("The cipher is not support Single-port Multi-user")
 	}
-	v.users = append(v.users, u)
+	v.Users = append(v.Users, u)
 
-	if !v.behaviorFused {
+	if !v.BehaviorFused {
 		hashkdf := hmac.New(sha256.New, []byte("SSBSKDF"))
 		hashkdf.Write(account.Key)
-		v.behaviorSeed = crc64.Update(v.behaviorSeed, crc64.MakeTable(crc64.ECMA), hashkdf.Sum(nil))
+		v.BehaviorSeed = crc64.Update(v.BehaviorSeed, crc64.MakeTable(crc64.ECMA), hashkdf.Sum(nil))
 	}
 
 	return nil
@@ -54,7 +54,7 @@ func (v *Validator) Del(email string) error {
 
 	email = strings.ToLower(email)
 	idx := -1
-	for i, u := range v.users {
+	for i, u := range v.Users {
 		if strings.EqualFold(u.Email, email) {
 			idx = i
 			break
@@ -64,11 +64,11 @@ func (v *Validator) Del(email string) error {
 	if idx == -1 {
 		return newError("User ", email, " not found.")
 	}
-	ulen := len(v.users)
+	ulen := len(v.Users)
 
-	v.users[idx] = v.users[ulen-1]
-	v.users[ulen-1] = nil
-	v.users = v.users[:ulen-1]
+	v.Users[idx] = v.Users[ulen-1]
+	v.Users[ulen-1] = nil
+	v.Users = v.Users[:ulen-1]
 
 	return nil
 }
@@ -78,7 +78,7 @@ func (v *Validator) Get(bs []byte, command protocol.RequestCommand) (u *protocol
 	v.RLock()
 	defer v.RUnlock()
 
-	for _, user := range v.users {
+	for _, user := range v.Users {
 		if account := user.Account.(*MemoryAccount); account.Cipher.IsAEAD() {
 			// AEAD payload decoding requires the payload to be over 32 bytes
 			if len(bs) < 32 {
@@ -123,9 +123,9 @@ func (v *Validator) GetBehaviorSeed() uint64 {
 	v.Lock()
 	defer v.Unlock()
 
-	v.behaviorFused = true
-	if v.behaviorSeed == 0 {
-		v.behaviorSeed = dice.RollUint64()
+	v.BehaviorFused = true
+	if v.BehaviorSeed == 0 {
+		v.BehaviorSeed = dice.RollUint64()
 	}
-	return v.behaviorSeed
+	return v.BehaviorSeed
 }

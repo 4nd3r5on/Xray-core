@@ -29,20 +29,20 @@ import (
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 )
 
-type userByEmail struct {
+type UserByEmail struct {
 	sync.Mutex
 	cache        map[string]*protocol.MemoryUser
 	defaultLevel uint32
 }
 
-func newUserByEmail(config *DefaultConfig) *userByEmail {
-	return &userByEmail{
+func NewUserByEmail(config *DefaultConfig) *UserByEmail {
+	return &UserByEmail{
 		cache:        make(map[string]*protocol.MemoryUser),
 		defaultLevel: config.Level,
 	}
 }
 
-func (v *userByEmail) addNoLock(u *protocol.MemoryUser) bool {
+func (v *UserByEmail) AddNoLock(u *protocol.MemoryUser) bool {
 	email := strings.ToLower(u.Email)
 	_, found := v.cache[email]
 	if found {
@@ -52,14 +52,14 @@ func (v *userByEmail) addNoLock(u *protocol.MemoryUser) bool {
 	return true
 }
 
-func (v *userByEmail) Add(u *protocol.MemoryUser) bool {
+func (v *UserByEmail) Add(u *protocol.MemoryUser) bool {
 	v.Lock()
 	defer v.Unlock()
 
-	return v.addNoLock(u)
+	return v.AddNoLock(u)
 }
 
-func (v *userByEmail) Get(email string) (*protocol.MemoryUser, bool) {
+func (v *UserByEmail) Get(email string) (*protocol.MemoryUser, bool) {
 	email = strings.ToLower(email)
 
 	v.Lock()
@@ -83,7 +83,7 @@ func (v *userByEmail) Get(email string) (*protocol.MemoryUser, bool) {
 	return user, found
 }
 
-func (v *userByEmail) Remove(email string) bool {
+func (v *UserByEmail) Remove(email string) bool {
 	email = strings.ToLower(email)
 
 	v.Lock()
@@ -101,7 +101,7 @@ type Handler struct {
 	PolicyManager         policy.Manager
 	InboundHandlerManager feature_inbound.Manager
 	Clients               *vmess.TimedUserValidator
-	UsersByEmail          *userByEmail
+	UsersByEmail          *UserByEmail
 	Detours               *DetourConfig
 	SessionHistory        *encoding.SessionHistory
 	CallbackManager       *xray_vmess_inbound_callbacks.CallbackManager
@@ -115,7 +115,7 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		InboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		Clients:               vmess.NewTimedUserValidator(),
 		Detours:               config.Detour,
-		UsersByEmail:          newUserByEmail(config.GetDefaultValue()),
+		UsersByEmail:          NewUserByEmail(config.GetDefaultValue()),
 		SessionHistory:        encoding.NewSessionHistory(),
 	}
 
@@ -251,10 +251,6 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 		})
 	}
 
-	if callbackID, err := h.CallbackManager.ExecOnProcess(request); err != nil {
-		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
-	}
-
 	newError("received request for ", request.Destination()).WriteToLog(session.ExportIDToError(ctx))
 
 	if err := connection.SetReadDeadline(time.Time{}); err != nil {
@@ -265,6 +261,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	inbound.Name = "vmess"
 	inbound.SetCanSpliceCopy(3)
 	inbound.User = request.User
+
+	if callbackID, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return newError("callback failed. Callback ID: ", callbackID).Base(err).AtWarning()
+	}
 
 	sessionPolicy = h.PolicyManager.ForLevel(request.User.Level)
 
