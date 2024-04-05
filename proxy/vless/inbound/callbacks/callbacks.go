@@ -7,9 +7,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/features/policy"
 )
 
-type OnProcessStart interface {
-	Exec(sessionPolicy *policy.Session) error
-}
+type OnProcessStart func(sessionPolicy *policy.Session) error
 
 type CallbackManager struct {
 	CbsOnProcess      idsyncmap.IDSyncMap[xray_common_callbacks.OnProcess]
@@ -18,7 +16,7 @@ type CallbackManager struct {
 
 func (cm *CallbackManager) ExecOnProcess(inbound *session.Inbound) (id int32, err error) {
 	for id, callback := range cm.CbsOnProcess.Get() {
-		err = callback.Exec(inbound)
+		err = callback(inbound)
 		if err != nil {
 			return id, err
 		}
@@ -28,7 +26,7 @@ func (cm *CallbackManager) ExecOnProcess(inbound *session.Inbound) (id int32, er
 
 func (cm *CallbackManager) ExecOnProcessStart(sessionPolicy *policy.Session) (id int32, err error) {
 	for id, callback := range cm.CbsOnProcessStart.Get() {
-		err = callback.Exec(sessionPolicy)
+		err = callback(sessionPolicy)
 		if err != nil {
 			return id, err
 		}

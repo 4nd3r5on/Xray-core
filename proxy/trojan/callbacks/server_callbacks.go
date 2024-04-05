@@ -12,7 +12,7 @@ type ServerCallbackManager struct {
 
 func (cm *ServerCallbackManager) ExecOnProcess(inbound *session.Inbound) (id int32, err error) {
 	for id, callback := range cm.CbsOnProcess.Get() {
-		err = callback.Exec(inbound)
+		err = callback(inbound)
 		if err != nil {
 			return id, err
 		}
