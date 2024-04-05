@@ -25,7 +25,7 @@ import (
 	"github.com/4nd3r5on/Xray-core/features/routing"
 	"github.com/4nd3r5on/Xray-core/proxy/vmess"
 	"github.com/4nd3r5on/Xray-core/proxy/vmess/encoding"
-	xray_vmess_inbound_callbacks "github.com/4nd3r5on/Xray-core/proxy/vmess/inbound/callbacks"
+	callbacks "github.com/4nd3r5on/Xray-core/proxy/vmess/inbound/callbacks"
 	"github.com/4nd3r5on/Xray-core/transport/internet/stat"
 )
 
@@ -104,12 +104,13 @@ type Handler struct {
 	UsersByEmail          *UserByEmail
 	Detours               *DetourConfig
 	SessionHistory        *encoding.SessionHistory
-	CallbackManager       *xray_vmess_inbound_callbacks.CallbackManager
+	CallbackManager       *callbacks.CallbackManager
 }
 
 // New creates a new VMess inbound handler.
 func New(ctx context.Context, config *Config) (*Handler, error) {
 	v := core.MustFromContext(ctx)
+	cm := callbacks.NewCallbackManager()
 	handler := &Handler{
 		PolicyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		InboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
@@ -117,6 +118,7 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		Detours:               config.Detour,
 		UsersByEmail:          NewUserByEmail(config.GetDefaultValue()),
 		SessionHistory:        encoding.NewSessionHistory(),
+		CallbackManager:       cm,
 	}
 
 	for _, user := range config.User {
