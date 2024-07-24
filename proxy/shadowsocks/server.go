@@ -17,15 +17,17 @@ import (
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/policy"
 	"github.com/xtls/xray-core/features/routing"
+	shadowsocks_callbacks "github.com/xtls/xray-core/proxy/shadowsocks/callbacks"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/udp"
 )
 
 type Server struct {
-	config        *ServerConfig
-	validator     *Validator
-	policyManager policy.Manager
-	cone          bool
+	config          *ServerConfig
+	validator       *Validator
+	policyManager   policy.Manager
+	cone            bool
+	CallbackManager *shadowsocks_callbacks.ServerCallbackManager
 }
 
 // NewServer create a new Shadowsocks server.
@@ -43,11 +45,13 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 	}
 
 	v := core.MustFromContext(ctx)
+	cm := shadowsocks_callbacks.NewServerCallbackManager()
 	s := &Server{
-		config:        config,
-		validator:     validator,
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		cone:          ctx.Value("cone").(bool),
+		config:          config,
+		validator:       validator,
+		policyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		cone:            ctx.Value("cone").(bool),
+		CallbackManager: cm,
 	}
 
 	return s, nil
@@ -178,6 +182,10 @@ func (s *Server) handleUDPPayload(ctx context.Context, conn stat.Connection, dis
 		}
 	}
 
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
+
 	return nil
 }
 
@@ -205,6 +213,10 @@ func (s *Server) handleConnection(ctx context.Context, conn stat.Connection, dis
 		panic("no inbound metadata")
 	}
 	inbound.User = request.User
+
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
 
 	dest := request.Destination()
 	ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{

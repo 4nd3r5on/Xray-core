@@ -31,6 +31,7 @@ import (
 	"github.com/xtls/xray-core/proxy"
 	"github.com/xtls/xray-core/proxy/vless"
 	"github.com/xtls/xray-core/proxy/vless/encoding"
+	vless_inbound_callbacks "github.com/xtls/xray-core/proxy/vless/inbound/callbacks"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
@@ -56,17 +57,20 @@ type Handler struct {
 	validator             *vless.Validator
 	dns                   dns.Client
 	fallbacks             map[string]map[string]map[string]*Fallback // or nil
+	CallbackManager       *vless_inbound_callbacks.CallbackManager
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
 // New creates a new VLess inbound handler.
 func New(ctx context.Context, config *Config, dc dns.Client) (*Handler, error) {
 	v := core.MustFromContext(ctx)
+	cm := vless_inbound_callbacks.NewCallbackManager()
 	handler := &Handler{
 		inboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		validator:             new(vless.Validator),
 		dns:                   dc,
+		CallbackManager:       cm,
 	}
 
 	for _, user := range config.Clients {
@@ -502,6 +506,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
 	inbound.Timer = timer
 	ctx = policy.ContextWithBufferPolicy(ctx, sessionPolicy.Buffer)
+
+	if callbackID, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
 
 	link, err := dispatcher.Dispatch(ctx, request.Destination())
 	if err != nil {

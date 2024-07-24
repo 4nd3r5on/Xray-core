@@ -21,6 +21,7 @@ import (
 	"github.com/xtls/xray-core/core"
 	"github.com/xtls/xray-core/features/policy"
 	"github.com/xtls/xray-core/features/routing"
+	trojan_callbacks "github.com/xtls/xray-core/proxy/trojan/callbacks"
 	"github.com/xtls/xray-core/transport/internet/reality"
 	"github.com/xtls/xray-core/transport/internet/stat"
 	"github.com/xtls/xray-core/transport/internet/tls"
@@ -35,10 +36,11 @@ func init() {
 
 // Server is an inbound connection handler that handles messages in trojan protocol.
 type Server struct {
-	policyManager policy.Manager
-	validator     *Validator
-	fallbacks     map[string]map[string]map[string]*Fallback // or nil
-	cone          bool
+	policyManager   policy.Manager
+	validator       *Validator
+	fallbacks       map[string]map[string]map[string]*Fallback // or nil
+	cone            bool
+	CallbackManager *trojan_callbacks.ServerCallbackManager
 }
 
 // NewServer creates a new trojan inbound handler.
@@ -56,10 +58,12 @@ func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
 	}
 
 	v := core.MustFromContext(ctx)
+	cm := trojan_callbacks.NewServerCallbackManager()
 	server := &Server{
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		validator:     validator,
-		cone:          ctx.Value("cone").(bool),
+		policyManager:   v.GetFeature(policy.ManagerType()).(policy.Manager),
+		validator:       validator,
+		cone:            ctx.Value("cone").(bool),
+		CallbackManager: cm,
 	}
 
 	if config.Fallbacks != nil {
@@ -216,6 +220,9 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn stat.Con
 	inbound.CanSpliceCopy = 3
 	inbound.User = user
 	sessionPolicy = s.policyManager.ForLevel(user.Level)
+	if callbackID, err := s.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("vmess callback failed. Callback ID: ", callbackID).Base(err)
+	}
 
 	if destination.Network == net.Network_UDP { // handle udp request
 		return s.handleUDPPayload(ctx, &PacketReader{Reader: clientReader}, &PacketWriter{Writer: conn}, dispatcher)
@@ -346,14 +353,14 @@ func (s *Server) fallback(ctx context.Context, err error, sessionPolicy policy.S
 		cs := tlsConn.ConnectionState()
 		name = cs.ServerName
 		alpn = cs.NegotiatedProtocol
-		errors.LogInfo(ctx, "realName = " + name)
-		errors.LogInfo(ctx, "realAlpn = " + alpn)
+		errors.LogInfo(ctx, "realName = "+name)
+		errors.LogInfo(ctx, "realAlpn = "+alpn)
 	} else if realityConn, ok := iConn.(*reality.Conn); ok {
 		cs := realityConn.ConnectionState()
 		name = cs.ServerName
 		alpn = cs.NegotiatedProtocol
-		errors.LogInfo(ctx, "realName = " + name)
-		errors.LogInfo(ctx, "realAlpn = " + alpn)
+		errors.LogInfo(ctx, "realName = "+name)
+		errors.LogInfo(ctx, "realAlpn = "+alpn)
 	}
 	name = strings.ToLower(name)
 	alpn = strings.ToLower(alpn)
@@ -403,7 +410,7 @@ func (s *Server) fallback(ctx context.Context, err error, sessionPolicy policy.S
 						}
 						if k == '?' || k == ' ' {
 							path = string(firstBytes[i:j])
-							errors.LogInfo(ctx, "realPath = " + path)
+							errors.LogInfo(ctx, "realPath = "+path)
 							if pfb[path] == nil {
 								path = ""
 							}
