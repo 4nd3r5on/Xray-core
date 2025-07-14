@@ -34,6 +34,7 @@ import (
 	"github.com/xtls/xray-core/features/routing"
 	"github.com/xtls/xray-core/proxy"
 	"github.com/xtls/xray-core/proxy/vless"
+	vless_callbacks "github.com/xtls/xray-core/proxy/vless/callbacks"
 	"github.com/xtls/xray-core/proxy/vless/encoding"
 	"github.com/xtls/xray-core/proxy/vless/encryption"
 	"github.com/xtls/xray-core/transport"
@@ -79,11 +80,13 @@ type Handler struct {
 	defaultDispatcher      *dispatcher.DefaultDispatcher
 	ctx                    context.Context
 	fallbacks              map[string]map[string]map[string]*Fallback // or nil
+	CallbackManager        *vless_callbacks.InboundCallbackManager
 	// regexps               map[string]*regexp.Regexp       // or nil
 }
 
 // New creates a new VLess inbound handler.
 func New(ctx context.Context, config *Config, dc dns.Client, validator vless.Validator) (*Handler, error) {
+	cm := vless_callbacks.NewInboundCallbackManager()
 	v := core.MustFromContext(ctx)
 	handler := &Handler{
 		inboundHandlerManager:  v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
@@ -92,6 +95,7 @@ func New(ctx context.Context, config *Config, dc dns.Client, validator vless.Val
 		outboundHandlerManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
 		defaultDispatcher:      v.GetFeature(routing.DispatcherType()).(*dispatcher.DefaultDispatcher),
 		ctx:                    ctx,
+		CallbackManager:        cm,
 	}
 
 	if config.Decryption != "" && config.Decryption != "none" {
@@ -620,6 +624,10 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection s
 			return err
 		}
 		return r.NewMux(ctx, h.defaultDispatcher.WrapLink(ctx, &transport.Link{Reader: clientReader, Writer: clientWriter}))
+	}
+
+	if id, err := h.CallbackManager.ExecOnProcess(inbound); err != nil {
+		return errors.New("failed to execute on process callback idL ", id).Base(err).AtWarning()
 	}
 
 	if err := dispatcher.DispatchLink(ctx, request.Destination(), &transport.Link{
